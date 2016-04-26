@@ -1,57 +1,82 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Code Editor</title>
+pc.script.create("asteroidManager", function (app) {
+	var NUM_ASTEROIDS = 10;
+	var START_BORDER_NAME = "Right";
+	var END_BORDER_NAME = "Left";
 
-    <meta name='robots' content='noindex' />
-    <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no' />
+	var AsteroidManager = function (entity) {
+		this.entity = entity;
 
-    <link href='/editor/scene/js/codemirror/lib/codemirror.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/dialog/dialog.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/hint/show-hint.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/lint/lint.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/tern/tern.css' rel='stylesheet' />
-    <link href='/editor/scene/css/code_editor.css' rel='stylesheet' />
-    <link rel='icon' type='image/png' href='//s3-eu-west-1.amazonaws.com/static.playcanvas.com/images/icons/favicon_code.png' />
-</head>
-<body>
-    <script>
-        var config = {"self":{"id":22266,"username":"runninglvlan"},"accessToken":"8vvpia3b65osqgjqsmzg9yi2fch9i9we","project":{"id":381333,"name":"Robot Impact","permissions":{"admin":[22266],"write":[70469],"read":[]},"private":false,"repositories":{"current":"directory"}},"file":{"name":"asteroidManager.js"},"title":"asteroidManager.js | Code Editor","url":{"api":"https://playcanvas.com/api","home":"https://playcanvas.com","realtime":{"http":"https://rt2.playcanvas.com"},"messenger":{"http":"https://msg.playcanvas.com/","ws":"https://msg.playcanvas.com/messages"},"autocomplete":"https://s3-eu-west-1.amazonaws.com/code.playcanvas.com/tern-playcanvas.json"}};
-        document.title = config.title;
-    </script>
+		var inner = {
+			player: null,
+			border: null,
+			asteroids: [],
+			clones: [],
 
-   <div id="editor" class="code-editor">
-        <div class="code-editor-topbar">
-            <span class="code-editor-logo hidden-xs">
-                PLAY<span class="thin">CANVAS</span>
-            </span>
-            <span class="code-editor-logo-small hidden-xs">
-                CODE EDITOR
-            </span>
-            <div id="btn-save" class="code-editor-save">
-                 SAVE
-            </div>
-            <div id="progress" class="code-editor-progress">
-                <img src="//s3-eu-west-1.amazonaws.com/static.playcanvas.com/platform/images/loader_transparent.gif" width="24" height="24" />
-            </div>
-            <span id="readonly" class="code-editor-readonly">
-                READ-ONLY
-            </span>
-            <span id="error" class="code-editor-error">
-            </span>
-        </div>
-        <div id="editor-container" />
-        <div id="users" class="hidden-xs"/>
-    </div>
+			addAsteroid: function () {
+				var randomIndex = Math.floor(Math.random() * this.asteroids.length);
+				var clone = this.asteroids[randomIndex].clone();
+				clone.setPosition(this.getRandomPositionFrom(this.border.start.getPosition()));
+				this.clones.push(clone);
+				app.root.addChild(clone);
+				clone.script.asteroid.setDirectionFromTarget(this.getRandomPositionFrom(this.player.getPosition()));
+			},
 
-    <!-- core -->
-    <script src='/editor/scene/js/events.js'></script>
-    <script src='/editor/scene/js/realtime/sockjs.0.3.4.min.js'></script>
-    <script src='https://msg.playcanvas.com/messenger.js'></script>
+			getRandomPositionFrom: function (position) {
+				var topPosition = this.border.top.getPosition();
+				var bottomPosition = this.border.bottom.getPosition();
+				var randomY = Math.floor(pc.math.random(bottomPosition.y, topPosition.y));
+				position.y = randomY;
+				return position;
+			},
 
-    <!-- main -->
-    <script src='/editor/scene/js/code-editor.js'></script>
+			isBeyondBorder: function (i) {
+				if (this.border.end.getPosition().x > this.border.start.getPosition().x) {
+					return this.clones[i].getPosition().x > this.border.end.getPosition().x;
+				} else {
+					return this.clones[i].getPosition().x < this.border.end.getPosition().x;
+				}
+			},
 
-</body>
-</html>
+			addNewAsteroidsAndDestroyOldOnes: function () {
+				if (this.clones.length < NUM_ASTEROIDS) {
+					this.addAsteroid();
+				}
+				for (var i = 0; i < this.clones.length; i++) {
+					if (this.isBeyondBorder(i)) {
+						var cloneToDestroy = this.clones.splice(i, 1).pop();
+						cloneToDestroy.destroy();
+					}
+				}
+			}
+		};
+		this._getInner = function () {
+			return inner;
+		};
+	};
+
+	AsteroidManager.prototype = {
+		initialize: function () {
+			var inner = this._getInner();
+			inner.player = app.root.findByName("Player");
+
+			var borders = app.root.findByName("Borders");
+			inner.border = {
+				top: borders.findByName("Top"),
+				bottom: borders.findByName("Bottom"),
+				start: borders.findByName(START_BORDER_NAME),
+				end: borders.findByName(END_BORDER_NAME)
+			};
+
+			inner.asteroids.push(this.entity.findByName("AsteroidSmall"));
+			inner.asteroids.push(this.entity.findByName("AsteroidBig"));
+			inner.asteroids.push(this.entity.findByName("AsteroidSmall2"));
+			inner.asteroids.push(this.entity.findByName("AsteroidBig2"));
+		},
+
+		update: function (dt) {
+			this._getInner().addNewAsteroidsAndDestroyOldOnes();
+		}
+	};
+
+	return AsteroidManager;
+});

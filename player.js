@@ -1,57 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Code Editor</title>
+pc.script.create("player", function (app) {
+	var TIME_200MS = 200;
 
-    <meta name='robots' content='noindex' />
-    <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no' />
+	var Player = function (entity) {
+		this.entity = entity;
 
-    <link href='/editor/scene/js/codemirror/lib/codemirror.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/dialog/dialog.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/hint/show-hint.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/lint/lint.css' rel='stylesheet' />
-    <link href='/editor/scene/js/codemirror/addon/tern/tern.css' rel='stylesheet' />
-    <link href='/editor/scene/css/code_editor.css' rel='stylesheet' />
-    <link rel='icon' type='image/png' href='//s3-eu-west-1.amazonaws.com/static.playcanvas.com/images/icons/favicon_code.png' />
-</head>
-<body>
-    <script>
-        var config = {"self":{"id":22266,"username":"runninglvlan"},"accessToken":"8vvpia3b65osqgjqsmzg9yi2fch9i9we","project":{"id":381333,"name":"Robot Impact","permissions":{"admin":[22266],"write":[70469],"read":[]},"private":false,"repositories":{"current":"directory"}},"file":{"name":"player.js"},"title":"player.js | Code Editor","url":{"api":"https://playcanvas.com/api","home":"https://playcanvas.com","realtime":{"http":"https://rt2.playcanvas.com"},"messenger":{"http":"https://msg.playcanvas.com/","ws":"https://msg.playcanvas.com/messages"},"autocomplete":"https://s3-eu-west-1.amazonaws.com/code.playcanvas.com/tern-playcanvas.json"}};
-        document.title = config.title;
-    </script>
+		var inner = {
+			lives: 0,
+			interval: null,
+			start: new pc.Vec3(0, 0, 0)
+		};
+		this._getInner = function () {
+			return inner;
+		};
+	};
 
-   <div id="editor" class="code-editor">
-        <div class="code-editor-topbar">
-            <span class="code-editor-logo hidden-xs">
-                PLAY<span class="thin">CANVAS</span>
-            </span>
-            <span class="code-editor-logo-small hidden-xs">
-                CODE EDITOR
-            </span>
-            <div id="btn-save" class="code-editor-save">
-                 SAVE
-            </div>
-            <div id="progress" class="code-editor-progress">
-                <img src="//s3-eu-west-1.amazonaws.com/static.playcanvas.com/platform/images/loader_transparent.gif" width="24" height="24" />
-            </div>
-            <span id="readonly" class="code-editor-readonly">
-                READ-ONLY
-            </span>
-            <span id="error" class="code-editor-error">
-            </span>
-        </div>
-        <div id="editor-container" />
-        <div id="users" class="hidden-xs"/>
-    </div>
+	Player.prototype = {
+		initialize: function () {
+			this.restart();
+		},
 
-    <!-- core -->
-    <script src='/editor/scene/js/events.js'></script>
-    <script src='/editor/scene/js/realtime/sockjs.0.3.4.min.js'></script>
-    <script src='https://msg.playcanvas.com/messenger.js'></script>
+		update: function (dt) { },
 
-    <!-- main -->
-    <script src='/editor/scene/js/code-editor.js'></script>
+		removeLive: function () {
+			var inner = this._getInner();
+			if (inner.interval === null) {
+				document.getElementsByClassName("rotated")[inner.lives-1].className = "rotated disabled";
+				inner.lives--;
+				this.moveToStart();
+				var counter = 0;
+				var rocket = this.entity.getChildren()[0];
+				inner.interval = window.setInterval(function () {
+					rocket.enabled = !rocket.enabled;
+					if (counter > 6) {
+						window.clearInterval(inner.interval);
+						inner.interval = null;
+					}
+					counter++;
+				}, TIME_200MS);
+			}
+		},
 
-</body>
-</html>
+		isAlive: function () {
+			return this._getInner().lives > 0;
+		},
+
+		moveToStart: function () {
+			this.entity.rigidbody.teleport(this._getInner().start);
+		},
+
+		updateStart: function (position) {
+			this._getInner().start.set(position.x + 10, position.y, position.z);
+		},
+
+		restart: function () {
+			this._getInner().lives = 3;
+			var rocketImages = document.getElementsByClassName("rotated");
+			for (var i = 0; i < rocketImages.length; i++) {
+				rocketImages[i].className = "rotated";
+			}
+		}
+	};
+
+	return Player;
+});
